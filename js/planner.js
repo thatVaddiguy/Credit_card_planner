@@ -140,5 +140,27 @@
     return Math.ceil(hi / 5) * 5;
   }
 
-  return { simulate, requiredBudget, minimumPayment, sumFirstMins, MAX_MONTHS };
+  /**
+   * Personal (consolidation) loan quote. The origination fee is assumed to be taken out of the
+   * proceeds, so you borrow slightly more than you owe in order to clear every card.
+   */
+  function loanQuote(amountNeeded, apr, termMonths, feePct) {
+    const fee = Math.min(Math.max(Number(feePct) || 0, 0), 50) / 100;
+    const principal = amountNeeded / (1 - fee);
+    const r = (Number(apr) || 0) / 1200;
+    const n = Math.max(1, Math.round(termMonths));
+    const payment = r > 0 ? (principal * r) / (1 - Math.pow(1 + r, -n)) : principal / n;
+    const totalPaid = payment * n;
+    return {
+      principal,
+      payment,
+      months: n,
+      totalPaid,
+      feeAmount: principal - amountNeeded,
+      interest: totalPaid - principal,
+      cost: totalPaid - amountNeeded, // interest + fee
+    };
+  }
+
+  return { simulate, requiredBudget, minimumPayment, sumFirstMins, loanQuote, MAX_MONTHS };
 });

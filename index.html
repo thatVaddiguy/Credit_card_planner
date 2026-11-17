@@ -64,26 +64,65 @@
       </div>
     </section>
 
+    <!-- 2. Budget -->
+    <section class="panel" aria-labelledby="budget-h">
+      <h2 id="budget-h">2. Your monthly budget</h2>
+      <p class="hint">Add your take-home pay and the bills you can't skip. The planner uses them to check which plans you can actually afford. Leave this blank to skip.</p>
+
+      <div class="income-row">
+        <label class="field">
+          <span>Take-home pay (after taxes)</span>
+          <div class="money-input"><span>$</span><input type="number" id="salary" min="0" step="10" inputmode="decimal" placeholder="e.g. 3800" /></div>
+        </label>
+        <label class="field">
+          <span>How often</span>
+          <select id="salary-freq">
+            <option value="monthly">Per month</option>
+            <option value="semimonthly">Twice a month</option>
+            <option value="biweekly">Every 2 weeks</option>
+            <option value="weekly">Every week</option>
+            <option value="yearly">Per year</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Cushion for everything else</span>
+          <div class="pct-input"><input type="number" id="cushion" min="0" max="50" step="1" inputmode="decimal" placeholder="10" /><span>% of pay</span></div>
+        </label>
+      </div>
+      <p class="hint" id="salary-monthly"></p>
+
+      <h3 class="sub-h">Essential monthly costs</h3>
+      <div class="expense-list" id="expense-list"></div>
+      <div class="chips" id="expense-chips" aria-label="Quick add common expenses"></div>
+      <button type="button" class="btn ghost" id="add-expense">+ Add another cost</button>
+    </section>
+
     <div id="error" class="error" role="alert" hidden></div>
 
     <div id="results" hidden>
       <!-- 2. Snapshot -->
       <section class="panel" aria-labelledby="snap-h">
-        <h2 id="snap-h">2. Where you stand today</h2>
+        <h2 id="snap-h">3. Where you stand today</h2>
         <div class="stats" id="stats"></div>
         <div class="callout warn" id="min-callout"></div>
+        <div id="paycheck" hidden>
+          <h3 class="sub-h">Where your paycheck goes: <span class="sel-plan-name"></span></h3>
+          <div class="paybar" id="paybar" role="img"></div>
+          <ul class="paybar-legend" id="paybar-legend"></ul>
+        </div>
       </section>
 
       <!-- 3. Plans -->
       <section class="panel" aria-labelledby="plans-h">
-        <h2 id="plans-h">3. Choose a payoff plan</h2>
+        <h2 id="plans-h">4. Choose a payoff plan</h2>
         <p class="hint">Each plan is one fixed monthly amount spread across your cards. Pay every card's minimum, then put the rest toward the priority card. When a card is paid off, its payment rolls into the next one.</p>
+        <div class="callout good" id="afford-callout" hidden></div>
         <div class="plans" id="plans" role="radiogroup" aria-label="Payoff plans"></div>
       </section>
 
       <!-- 4. Charts -->
       <section class="panel" aria-labelledby="charts-h">
-        <h2 id="charts-h">4. See the plan</h2>
+        <h2 id="charts-h">5. See the plan</h2>
         <div class="chart-grid">
           <figure class="chart-card wide">
             <figcaption>
@@ -125,20 +164,41 @@
 
       <!-- 5. Payoff timeline -->
       <section class="panel" aria-labelledby="tl-h">
-        <h2 id="tl-h">5. Payoff order: <span class="sel-plan-name"></span></h2>
+        <h2 id="tl-h">6. Payoff order: <span class="sel-plan-name"></span></h2>
         <ol class="timeline" id="timeline"></ol>
       </section>
 
-      <!-- 6. Tips -->
+      <!-- 7. Personal loan -->
+      <section class="panel" aria-labelledby="loan-h">
+        <h2 id="loan-h">7. Should you consider a personal loan?</h2>
+        <p class="hint">A debt consolidation loan pays off all your cards at once. You then make one fixed payment, usually at a lower rate than your cards. Enter a rate you've been offered, or keep the typical values.</p>
+        <div class="income-row">
+          <label class="field"><span>Loan APR</span>
+            <div class="pct-input"><input type="number" id="loan-apr" min="0" max="40" step="0.1" inputmode="decimal" /><span>%</span></div></label>
+          <label class="field"><span>Loan term</span>
+            <select id="loan-term">
+              <option value="24">2 years</option>
+              <option value="36">3 years</option>
+              <option value="48">4 years</option>
+              <option value="60">5 years</option>
+            </select></label>
+          <label class="field"><span>Origination fee</span>
+            <div class="pct-input"><input type="number" id="loan-fee" min="0" max="12" step="0.5" inputmode="decimal" /><span>%</span></div></label>
+        </div>
+        <div class="verdict" id="loan-verdict"></div>
+        <div class="table-wrap compact"><table class="schedule" id="loan-table"></table></div>
+      </section>
+
+      <!-- 8. Tips -->
       <section class="panel" aria-labelledby="tips-h">
-        <h2 id="tips-h">6. Ways to get out faster</h2>
+        <h2 id="tips-h">8. Ways to get out faster</h2>
         <ul class="tips" id="tips"></ul>
       </section>
 
       <!-- 7. Schedule -->
       <section class="panel" aria-labelledby="sched-h">
         <div class="panel-head">
-          <h2 id="sched-h">7. Month-by-month schedule: <span class="sel-plan-name"></span></h2>
+          <h2 id="sched-h">9. Month-by-month schedule: <span class="sel-plan-name"></span></h2>
           <div class="btn-row">
             <button type="button" class="btn ghost" id="print-plan">Print</button>
             <button type="button" class="btn" id="download-csv">Download CSV</button>
@@ -149,7 +209,7 @@
     </div>
 
     <footer class="foot">
-      <p>Estimates only. The planner assumes your APR stays the same, you make no new purchases, and each card's minimum is the greater of $25 (or the minimum you enter) and 1% of the balance plus that month's interest. Your card agreement may calculate it differently.</p>
+      <p>Estimates only. The planner assumes your APR stays the same, you make no new purchases, and each card's minimum is the greater of $25 (or the minimum you enter) and 1% of the balance plus that month's interest. Your card agreement may calculate it differently. Likelihood ratings compare each payment with the money left after your essentials and cushion: "Very likely" uses up to 60% of what's left after your cushion, "Likely" fits within it, "A stretch" dips into the cushion, and "Not affordable" needs more than you have left. Loan estimates use a standard fixed-rate payment, with the origination fee taken out of the loan amount. This is not financial advice.</p>
     </footer>
   </main>
 

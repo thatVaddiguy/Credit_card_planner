@@ -11,6 +11,9 @@ A static web app for planning how to pay off credit card debt. Nothing to instal
   - **Aggressive**: about 18 months
   - **Custom**: your own monthly budget
   - Each plan shows the monthly payment, debt-free date, total interest, total paid, and the savings compared with paying only the minimums.
+- **Monthly budget**: take-home pay (monthly, twice a month, every 2 weeks, weekly, or yearly), essential costs like rent, electricity, and car payments (with one-click buttons for common ones), and a safety cushion (10% of pay by default). The app shows your free cash and how much you can comfortably put toward debt, and a bar shows where your paycheck goes.
+- **Likelihood ratings**: every plan is rated *Very likely*, *Likely*, *A stretch*, or *Not affordable* based on your budget. The fastest plan that fits comfortably is marked as the best fit.
+- **Personal loan check**: compares a consolidation loan (editable APR, term, and fee) with paying the cards directly at the same monthly amount. It then recommends whether to consider a loan. If no plan or loan fits, it points you to a longer loan term, hardship programs, or nonprofit credit counseling.
 - **Strategy**: Avalanche (highest APR first, cheapest) or Snowball (smallest balance first, quickest wins). Money freed up by a paid-off card rolls into the next card.
 - **Charts** (Chart.js): total balance over time for every plan, balance by card, principal vs. interest, total interest by plan, and each month's payment split into interest and principal.
 - **Payoff order timeline**: when each card hits $0.

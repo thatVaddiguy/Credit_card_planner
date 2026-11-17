@@ -15,6 +15,26 @@
     { bank: "Synchrony", name: "Store card", balance: 1300, apr: 29.99, minPayment: "" },
   ];
 
+  const EXAMPLE_BUDGET = {
+    salary: "3800", freq: "monthly", cushion: "10",
+    expenses: [
+      { name: "Rent / mortgage", amount: "1450" },
+      { name: "Electricity", amount: "110" },
+      { name: "Car payment", amount: "360" },
+      { name: "Car insurance", amount: "140" },
+      { name: "Groceries", amount: "450" },
+      { name: "Phone & internet", amount: "120" },
+    ],
+  };
+  const EMPTY_BUDGET = () => ({
+    salary: "", freq: "monthly", cushion: "10",
+    expenses: [{ name: "Rent / mortgage", amount: "" }, { name: "Electricity", amount: "" }, { name: "Car payment", amount: "" }],
+  });
+  const EXPENSE_PRESETS = ["Rent / mortgage", "Electricity", "Water & gas", "Car payment", "Car insurance", "Health insurance",
+    "Groceries", "Phone & internet", "Fuel / transit", "Childcare", "Student loan", "Other loan payment", "Medical"];
+  const FREQ = { monthly: 1, semimonthly: 2, biweekly: 26 / 12, weekly: 52 / 12, yearly: 1 / 12 };
+  const DEFAULT_LOAN = { apr: "12", term: "36", fee: "3" };
+
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -22,6 +42,13 @@
   const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" });
 
   let state = load() || { cards: EXAMPLE.map((c) => ({ ...c })), strategy: "avalanche", customBudget: "", selected: "medium", isExample: true };
+  // Fill in fields added in later versions so older saved data keeps working
+  if (!state.budget) state.budget = state.isExample ? cloneBudget(EXAMPLE_BUDGET) : EMPTY_BUDGET();
+  if (!state.loan) state.loan = { ...DEFAULT_LOAN };
+
+  function cloneBudget(b) {
+    return { ...b, expenses: b.expenses.map((e) => ({ ...e })) };
+  }
   let charts = {};
   let lastResult = null;
 
@@ -91,6 +118,105 @@
     });
     $("#example-note").hidden = !state.isExample;
   }
+  /* ---------- budget inputs ---------- */
+  function renderBudgetInputs() {
+    const b = state.budget;
+    $("#salary").value = b.salary;
+    $("#salary-freq").value = b.freq;
+    $("#cushion").value = b.cushion;
+
+    const list = $("#expense-list");
+    list.innerHTML = "";
+    b.expenses.forEach((e, i) => {
+      const row = document.createElement("div");
+      row.className = "expense-row";
+      row.innerHTML = `
+        <input type="text" data-k="name" value="${esc(e.name)}" placeholder="What is it?" aria-label="Expense name" />
+        <div class="money-input"><span>$</span><input type="number" data-k="amount" min="0" step="1" inputmode="decimal" value="${esc(e.amount)}" placeholder="0" aria-label="${esc(e.name || "Expense")} per month" /></div>
+        <button type="button" class="remove" aria-label="Remove ${esc(e.name || "expense")}" title="Remove">×</button>`;
+      row.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", () => {
+        b.expenses[i][inp.dataset.k] = inp.value;
+        if (inp.dataset.k === "name") renderChips();
+        updateBudgetSummary();
+        schedule();
+      }));
+      row.querySelector(".remove").addEventListener("click", () => {
+        b.expenses.splice(i, 1);
+        renderBudgetInputs();
+        schedule(0);
+      });
+      list.appendChild(row);
+    });
+    const total = document.createElement("div");
+    total.className = "expense-total";
+    total.id = "expense-total";
+    list.after(total);
+    $$(".expense-total").forEach((el) => { if (el !== total) el.remove(); });
+    renderChips();
+    updateBudgetSummary();
+  }
+
+  function renderChips() {
+    const have = new Set(state.budget.expenses.map((e) => e.name.trim().toLowerCase()));
+    const box = $("#expense-chips");
+    box.innerHTML = "";
+    EXPENSE_PRESETS.filter((n) => !have.has(n.toLowerCase())).forEach((n) => {
+      const c = document.createElement("button");
+      c.type = "button";
+      c.className = "chip";
+      c.textContent = "+ " + n;
+      c.addEventListener("click", () => {
+        state.budget.expenses.push({ name: n, amount: "" });
+        renderBudgetInputs();
+        const rows = $$("#expense-list .expense-row");
+        rows[rows.length - 1].querySelector('[data-k="amount"]').focus();
+      });
+      box.appendChild(c);
+    });
+  }
+
+  function updateBudgetSummary() {
+    const info = readBudget();
+    const totalEl = $("#expense-total");
+    const essentials = state.budget.expenses.reduce((s, e) => s + (parseFloat(e.amount) > 0 ? parseFloat(e.amount) : 0), 0);
+    if (totalEl) totalEl.innerHTML = `<span>Total essentials</span><span>${usd.format(essentials)} /month</span>`;
+    const note = $("#salary-monthly");
+    if (!info) { note.textContent = ""; return; }
+    note.innerHTML = `${state.budget.freq !== "monthly" ? `That's about <strong>${usd.format(info.monthly)}</strong> a month. ` : ""}After essentials you have <strong>${usd.format(info.free)}</strong> a month left${info.free > 0 ? `, and <strong>${usd.format(Math.max(0, info.comfortable))}</strong> after your ${info.cushionPct}% cushion` : ""}.`;
+  }
+
+  /** Returns null when no salary has been entered. */
+  function readBudget() {
+    const b = state.budget;
+    const pay = parseFloat(b.salary);
+    if (!isFinite(pay) || pay <= 0) return null;
+    const monthly = pay * (FREQ[b.freq] || 1);
+    const expenses = b.expenses
+      .map((e) => ({ name: e.name.trim() || "Other", amount: parseFloat(e.amount) }))
+      .filter((e) => isFinite(e.amount) && e.amount > 0);
+    const essentials = expenses.reduce((s, e) => s + e.amount, 0);
+    let cushionPct = parseFloat(b.cushion);
+    if (!isFinite(cushionPct) || cushionPct < 0) cushionPct = 10;
+    cushionPct = Math.min(cushionPct, 50);
+    const cushion = (monthly * cushionPct) / 100;
+    const free = monthly - essentials;
+    return { monthly, expenses, essentials, free, cushionPct, cushion, comfortable: free - cushion };
+  }
+
+  /** Rates how realistic a monthly payment is against the user's budget. */
+  function feasibility(pay, b) {
+    if (!b) return null;
+    const share = b.free > 0 ? pay / b.free : Infinity;
+    if (b.free <= 0 || pay > b.free + 0.5) {
+      return { key: "no", label: "Not affordable", share,
+        why: b.free <= 0 ? "Your essentials already use all of your take-home pay." : `Needs ${usd.format(pay)}, but only ${usd.format(b.free)} is left after essentials.` };
+    }
+    if (pay <= 0.6 * b.comfortable) return { key: "high", label: "Very likely", share, why: "Leaves plenty of room after essentials and your cushion." };
+    if (pay <= b.comfortable + 0.5) return { key: "likely", label: "Likely", share, why: "Fits after essentials and still keeps your cushion." };
+    return { key: "stretch", label: "A stretch", share, why: "Uses part of your cushion, so one surprise bill could knock you off track." };
+  }
+  const fits = (f) => f && (f.key === "high" || f.key === "likely");
+
   function markEdited() {
     if (state.isExample) { state.isExample = false; $("#example-note").hidden = true; }
   }
@@ -155,13 +281,68 @@
       return { ...def, budget, effectiveBudget: Math.max(budget, sumMin), result };
     });
 
+    const budgetInfo = readBudget();
+    plans.forEach((p) => { if (p.result) p.feas = feasibility(p.effectiveBudget, budgetInfo); });
+    // Recommended: the cheapest plan that fits comfortably in the budget
+    const recommended = budgetInfo
+      ? plans.filter((p) => p.result && p.result.paidOff && fits(p.feas)).sort((a, b) => a.result.totalInterest - b.result.totalInterest)[0] || null
+      : null;
+
     if (!plans.find((p) => p.id === state.selected && p.result)) state.selected = "medium";
-    lastResult = { cards, plans, minOnly, sumMin, strategy };
+    lastResult = { cards, plans, minOnly, sumMin, strategy, budget: budgetInfo, recommended };
 
     $("#results").hidden = false;
     renderStats();
+    renderAffordCallout();
     renderPlans();
     renderSelected();
+  }
+
+  function renderAffordCallout() {
+    const { budget: b, sumMin, recommended } = lastResult;
+    const el = $("#afford-callout");
+    if (!b) { el.hidden = true; return; }
+    el.hidden = false;
+    const comfy = Math.max(0, Math.floor(b.comfortable / 5) * 5);
+    if (b.free < sumMin) {
+      el.className = "callout warn";
+      el.innerHTML = `<strong>Your budget doesn't cover your minimum payments yet.</strong> After essentials you have ${usd.format(b.free)} a month, but the minimums total ${usd2.format(sumMin)}. See section 7 for options.`;
+      return;
+    }
+    el.className = "callout good";
+    el.innerHTML = `After essentials and a ${b.cushionPct}% cushion, you can comfortably put about <strong>${usd.format(comfy)}/month</strong> toward your cards.
+      ${recommended ? `The <strong>${recommended.name}</strong> plan is the fastest one that fits.`
+        : comfy >= sumMin ? "None of the preset plans fit comfortably, so a Custom plan at that amount is your best start."
+        : `That's less than your minimum payments (${usd2.format(sumMin)}), so any plan will use part of your cushion. See section 7 for whether a personal loan would help.`}
+      ${comfy >= sumMin ? ` <button type="button" class="btn ghost" id="use-comfy" style="margin-left:4px;padding:4px 10px">Use ${usd.format(comfy)} as my Custom plan</button>` : ""}`;
+    const btn = $("#use-comfy");
+    if (btn) btn.addEventListener("click", () => {
+      state.customBudget = String(comfy);
+      $("#custom-budget").value = comfy;
+      state.selected = "custom";
+      schedule(0);
+    });
+  }
+
+  function renderPaycheck() {
+    const { budget: b } = lastResult;
+    const box = $("#paycheck");
+    if (!b) { box.hidden = true; return; }
+    box.hidden = false;
+    const p = selectedPlan();
+    const pay = p.effectiveBudget;
+    const left = b.monthly - b.essentials - pay;
+    const segs = [
+      { label: "Essentials", v: b.essentials, color: css("--plan-min") },
+      { label: `Card payments (${p.name})`, v: pay, color: css(p.color) },
+    ];
+    if (left >= 0) segs.push({ label: "Left over", v: left, color: css("--good") });
+    const scale = Math.max(b.monthly, b.essentials + pay);
+    $("#paybar").innerHTML = segs.map((s) => `<span style="width:${(s.v / scale) * 100}%;background:${s.color}" title="${esc(s.label)}: ${usd.format(s.v)}"></span>`).join("");
+    $("#paybar").setAttribute("aria-label", segs.map((s) => `${s.label} ${usd.format(s.v)}`).join(", ") + ` of ${usd.format(b.monthly)} take-home pay`);
+    const legend = segs.map((s) => `<li><i style="background:${s.color}"></i>${esc(s.label)} <b>${usd.format(s.v)}</b> <span class="hint" style="margin:0">(${Math.round((s.v / b.monthly) * 100)}%)</span></li>`);
+    if (left < 0) legend.push(`<li style="color:var(--bad)"><strong>Short by ${usd.format(-left)} a month</strong></li>`);
+    $("#paybar-legend").innerHTML = legend.join("");
   }
 
   function selectedPlan() {
@@ -180,6 +361,11 @@
       ["Interest you're charged now", usd2.format(monthlyInterest), `per month, about ${usd.format(monthlyInterest / 30)} a day`],
       ["Minimum payments due", usd2.format(sumMin), "this month, all cards"],
     ];
+    const b = lastResult.budget;
+    if (b) {
+      tiles.push(["Free cash after essentials", usd.format(b.free), `of ${usd.format(b.monthly)} take-home a month`]);
+      tiles.push(["Debt vs. take-home pay", `${((total / (b.monthly * 12)) * 100).toFixed(0)}%`, `your debt is ${(total / b.monthly).toFixed(1)} months of pay`]);
+    }
     $("#stats").innerHTML = tiles.map(([k, v, s]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
     const c = $("#min-callout");
@@ -211,8 +397,17 @@
         const saved = minOnly.paidOff ? minOnly.totalInterest - r.totalInterest : null;
         const lowNote = p.id === "custom" && p.budget < sumMin
           ? `<div class="note">Your budget is below this month's minimums, so the plan uses ${usd2.format(sumMin)} instead.</div>` : "";
+        const f = p.feas;
+        const meterColor = f ? { high: "--good", likely: "--accent", stretch: "--warn", no: "--bad" }[f.key] : null;
+        const feasHtml = f ? `
+          <span class="badge ${f.key}" title="${esc(f.why)}">${f.label}</span>
+          <div class="meter" aria-hidden="true"><span style="width:${Math.min(100, isFinite(f.share) ? f.share * 100 : 100)}%;background:${css(meterColor)}"></span></div>
+          <div class="note">${isFinite(f.share) ? `Uses ${Math.round(f.share * 100)}% of your free cash. ` : ""}${esc(f.why)}</div>` : "";
+        const isRec = lastResult.recommended && lastResult.recommended.id === p.id;
         el.innerHTML = `<div class="name">${p.name}<span class="tag">${p.tag}</span></div>
+          ${isRec ? `<div class="rec">★ Best fit for your budget</div>` : ""}
           <div class="pay">${usd.format(p.effectiveBudget)}<small> /month</small></div>
+          ${feasHtml}
           <dl>
             <dt>Debt-free</dt><dd>${r.paidOff ? dateLabel(r.monthsToPayoff) : "Never"}</dd>
             <dt>Time</dt><dd>${duration(r.monthsToPayoff)}</dd>
@@ -236,10 +431,84 @@
   function renderSelected() {
     const p = selectedPlan();
     $$(".sel-plan-name").forEach((n) => (n.textContent = `${p.name} plan`));
+    renderPaycheck();
     renderCharts();
     renderTimeline();
+    renderLoan();
     renderTips();
     renderSchedule();
+  }
+
+  /* ---------- personal loan ---------- */
+  function renderLoan() {
+    const { cards, minOnly, budget: b, recommended, sumMin } = lastResult;
+    const sel = selectedPlan();
+    const total = cards.reduce((s, c) => s + c.balance, 0);
+    const wApr = cards.reduce((s, c) => s + c.balance * c.apr, 0) / total;
+    const apr = isFinite(parseFloat(state.loan.apr)) ? parseFloat(state.loan.apr) : 12;
+    const term = parseInt(state.loan.term, 10) || 36;
+    const fee = isFinite(parseFloat(state.loan.fee)) ? parseFloat(state.loan.fee) : 3;
+    const loan = Planner.loanQuote(total, apr, term, fee);
+    const loanFeas = feasibility(loan.payment, b);
+    // Apples-to-apples: what if the same monthly amount went to the cards instead?
+    const same = Planner.simulate(cards, { budget: loan.payment, strategy: lastResult.strategy });
+    const savings = same.paidOff ? same.totalInterest - loan.cost : Infinity;
+
+    const caveat = `<p class="hint" style="margin-top:8px">A loan only helps if you stop using the cards once they're paid off. Your actual rate depends on your credit score. Many lenders let you check your rate with a soft credit pull, which doesn't affect your score.</p>`;
+    const sameTxt = same.paidOff
+      ? `Paying the same ${usd.format(loan.payment)}/month to your cards would cost ${usd.format(same.totalInterest)} in interest over ${duration(same.monthsToPayoff)}. The loan costs ${usd.format(loan.cost)} in interest and fees over ${duration(term)}.`
+      : `At ${usd.format(loan.payment)}/month your cards would never be paid off. The loan would clear the debt in ${duration(term)} for ${usd.format(loan.cost)} in interest and fees.`;
+
+    // Suggest a longer term when the chosen one is too expensive for the budget
+    let longer = "";
+    if (b && term < 60 && !fits(loanFeas)) {
+      const q60 = Planner.loanQuote(total, apr, 60, fee);
+      const f60 = feasibility(q60.payment, b);
+      longer = ` A 5-year loan would be ${usd.format(q60.payment)}/month (${f60.label.toLowerCase()} for your budget) and cost ${usd.format(q60.cost)} in interest and fees.`;
+    }
+
+    let cls, title, body;
+    if (!b) {
+      if (savings > 200) { cls = "maybe"; title = `A loan could save you about ${usd.format(Math.min(savings, 1e9))}`; }
+      else { cls = "no"; title = "A loan doesn't save much at these rates"; }
+      body = `${sameTxt} Add your take-home pay in section 2 to see whether the payment fits your budget.`;
+    } else if (b.free < sumMin) {
+      if (loan.payment <= b.free) {
+        cls = "yes"; title = "A personal loan could make this manageable";
+        body = `Your minimums (${usd2.format(sumMin)}) are more than the ${usd.format(b.free)} you have after essentials. A ${term}-month loan at ${apr}% would be ${usd.format(loan.payment)}/month, which fits. ${sameTxt}`;
+      } else {
+        cls = "warn"; title = "Your budget can't cover this debt right now";
+        body = `Even a ${term}-month loan (${usd.format(loan.payment)}/month) is more than the ${usd.format(Math.max(0, b.free))} left after essentials. Try a longer loan term above. Also consider cutting a fixed cost, asking your card issuers about a hardship program, or talking to a nonprofit credit counselor about a debt management plan. Those plans often cut card APRs to around 6–10%.`;
+      }
+    } else if (!recommended) {
+      if (fits(loanFeas)) {
+        cls = "yes"; title = "Consider a personal loan";
+        body = `None of the card plans fit comfortably in your budget, but a ${term}-month loan at ${apr}% would be ${usd.format(loan.payment)}/month (${loanFeas.label.toLowerCase()} to work). ${sameTxt}`;
+      } else if (loanFeas.key === "stretch") {
+        cls = "maybe"; title = "A loan might help, but it's tight";
+        body = `The loan payment (${usd.format(loan.payment)}/month) would eat into your cushion. Try a longer term, or trim an expense first. ${sameTxt}`;
+      } else {
+        cls = "warn"; title = "Neither the plans nor a loan fit your budget yet";
+        body = `Try a longer loan term above, trim a fixed cost, or talk to a nonprofit credit counselor about a debt management plan. ${sameTxt}`;
+      }
+    } else if (savings >= Math.max(300, 0.15 * same.totalInterest) && loanFeas.key !== "no" && apr < wApr) {
+      cls = "maybe"; title = `Worth considering: a loan could save you about ${usd.format(savings)}`;
+      body = `You don't need a loan, because the ${recommended.name} plan fits your budget. But your cards average ${wApr.toFixed(1)}% APR versus ${apr}% on the loan. ${sameTxt}`;
+    } else {
+      cls = "no"; title = "You probably don't need a personal loan";
+      body = `The ${recommended.name} plan fits your budget${savings > 0 && isFinite(savings) ? `, and a loan would only save about ${usd.format(savings)}` : `, and at ${apr}% a loan would cost you more`}. ${sameTxt}`;
+    }
+    body += longer;
+    $("#loan-verdict").className = "verdict " + cls;
+    $("#loan-verdict").innerHTML = `<h3>${esc(title)}</h3><p>${esc(body)}</p>${caveat}`;
+
+    const rows = [];
+    const add = (name, pay, months, cost, f) => rows.push(`<tr><td class="l">${esc(name)}</td><td>${pay}</td><td>${months}</td><td>${cost}</td>${b ? `<td class="l">${f ? `<span class="badge ${f.key}">${f.label}</span>` : "–"}</td>` : ""}</tr>`);
+    add(`Personal loan (${apr}%, ${term} mo, ${fee}% fee)`, usd.format(loan.payment), duration(term), usd.format(loan.cost), loanFeas);
+    add(`Cards: ${sel.name} plan`, usd.format(sel.effectiveBudget), duration(sel.result.monthsToPayoff), usd.format(sel.result.totalInterest), sel.feas);
+    if (recommended && recommended.id !== sel.id) add(`Cards: ${recommended.name} plan`, usd.format(recommended.effectiveBudget), duration(recommended.result.monthsToPayoff), usd.format(recommended.result.totalInterest), recommended.feas);
+    add("Cards: minimum payments only", `${usd.format(sumMin)} and falling`, duration(minOnly.monthsToPayoff), minOnly.paidOff ? usd.format(minOnly.totalInterest) : "Never paid off", feasibility(sumMin, b));
+    $("#loan-table").innerHTML = `<thead><tr><th class="l">Option</th><th>Monthly</th><th>Debt-free in</th><th>Interest + fees</th>${b ? `<th class="l">Fits your budget?</th>` : ""}</tr></thead><tbody>${rows.join("")}</tbody>`;
   }
 
   function chartDefaults() {
@@ -429,6 +698,36 @@
         ? `It has the smallest balance (${usd.format(top.balance)}), so you'll clear it first and get a quick win. Pay only the minimum on everything else until it's gone.`
         : `At ${top.apr}% APR it's your most expensive card. It costs you ${usd2.format((top.balance * top.apr) / 1200)} in interest every month. Every extra dollar should go here first.`]);
 
+    // Budget-aware advice
+    const bud = lastResult.budget;
+    if (bud) {
+      const rec = lastResult.recommended;
+      if (p.feas && !fits(p.feas) && rec) {
+        tips.push([`The ${rec.name} plan fits your budget better`,
+          `The ${p.name} plan needs ${usd.format(budget)}/month, which is ${p.feas.label.toLowerCase()} on your income. ${rec.name} (${usd.format(rec.effectiveBudget)}/month) leaves your cushion intact and still gets you debt-free by ${dateLabel(rec.result.monthsToPayoff)}.`]);
+      }
+      const biggest = [...bud.expenses].sort((a, b) => b.amount - a.amount)[0];
+      const flexible = bud.expenses.filter((e) => !/rent|mortgage|car payment|loan|insurance|childcare/i.test(e.name)).sort((a, b) => b.amount - a.amount)[0];
+      const target = flexible || biggest;
+      if (target && target.amount >= 50) {
+        const cut = Math.round(target.amount * 0.1);
+        const trimmed = Planner.simulate(cards, { budget: budget + cut, strategy });
+        if (r.paidOff && trimmed.paidOff && r.monthsToPayoff > trimmed.monthsToPayoff) {
+          tips.push([`Trim ${target.name.toLowerCase()} by 10%`,
+            `Cutting ${usd.format(cut)} from ${target.name.toLowerCase()} (${usd.format(target.amount)}/month) and adding it to your payment gets you out ${r.monthsToPayoff - trimmed.monthsToPayoff} month${r.monthsToPayoff - trimmed.monthsToPayoff > 1 ? "s" : ""} sooner and saves ${usd.format(r.totalInterest - trimmed.totalInterest)}.`]);
+        }
+      }
+      const housing = bud.expenses.filter((e) => /rent|mortgage/i.test(e.name)).reduce((s, e) => s + e.amount, 0);
+      if (housing > bud.monthly * 0.4) {
+        tips.push(["Housing is a big share of your pay",
+          `Rent or mortgage takes ${Math.round((housing / bud.monthly) * 100)}% of your take-home pay. Many budgets aim for about 30%. A roommate, or moving when your lease ends, could free up a lot of money for your cards.`]);
+      }
+      if (bud.free > budget * 1.5 && p.feas && p.feas.key === "high") {
+        tips.push(["You have room to go faster",
+          `This plan uses only ${Math.round(p.feas.share * 100)}% of your free cash. Raising your payment toward ${usd.format(Math.max(budget, Math.floor(bud.comfortable / 5) * 5))} would still leave your cushion untouched.`]);
+      }
+    }
+
     // Strategy comparison
     if (cards.length > 1) {
       const other = strategy === "snowball" ? "avalanche" : "snowball";
@@ -534,6 +833,27 @@
   /* ---------- wire up ---------- */
   function init() {
     renderCardInputs();
+    renderBudgetInputs();
+    $("#loan-apr").value = state.loan.apr;
+    $("#loan-term").value = state.loan.term;
+    $("#loan-fee").value = state.loan.fee;
+
+    const bindBudget = (id, key, evt = "input") => $(id).addEventListener(evt, (e) => {
+      state.budget[key] = e.target.value;
+      updateBudgetSummary();
+      schedule();
+    });
+    bindBudget("#salary", "salary");
+    bindBudget("#salary-freq", "freq", "change");
+    bindBudget("#cushion", "cushion");
+    $("#add-expense").addEventListener("click", () => {
+      state.budget.expenses.push({ name: "", amount: "" });
+      renderBudgetInputs();
+      const rows = $$("#expense-list .expense-row");
+      rows[rows.length - 1].querySelector("input").focus();
+    });
+    [["#loan-apr", "apr", "input"], ["#loan-term", "term", "change"], ["#loan-fee", "fee", "input"]].forEach(([id, key, evt]) =>
+      $(id).addEventListener(evt, (e) => { state.loan[key] = e.target.value; save(); if (lastResult) renderLoan(); }));
     $(`input[name="strategy"][value="${state.strategy}"]`).checked = true;
     $("#custom-budget").value = state.customBudget || "";
 
@@ -547,7 +867,9 @@
     $("#load-example").addEventListener("click", () => {
       state.cards = EXAMPLE.map((c) => ({ ...c }));
       state.isExample = true;
+      state.budget = cloneBudget(EXAMPLE_BUDGET);
       renderCardInputs();
+      renderBudgetInputs();
       schedule(0);
     });
     $("#clear-all").addEventListener("click", () => {
@@ -555,7 +877,9 @@
       state.customBudget = "";
       $("#custom-budget").value = "";
       state.isExample = false;
+      state.budget = EMPTY_BUDGET();
       renderCardInputs();
+      renderBudgetInputs();
       schedule(0);
       $("#card-list input").focus();
     });
@@ -571,7 +895,7 @@
     // Re-theme charts when the OS colour scheme changes
     if (window.matchMedia) {
       window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-        if (lastResult) { renderCardInputs(); renderPlans(); renderCharts(); renderTimeline(); }
+        if (lastResult) { renderCardInputs(); renderPlans(); renderPaycheck(); renderCharts(); renderTimeline(); }
       });
     }
     run();
