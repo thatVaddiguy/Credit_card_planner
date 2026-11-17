@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Debt Payoff Planner</title>
+  <meta name="description" content="Plan how to pay off your credit card debt with easy, medium, and aggressive payoff plans, charts, and a month-by-month schedule." />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1>Debt Payoff Planner</h1>
+      <p class="lede">Enter your credit cards, pick a plan, and see exactly when you'll be debt-free and how much interest you'll pay along the way.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- 1. Inputs -->
+    <section class="panel" aria-labelledby="cards-h">
+      <div class="panel-head">
+        <h2 id="cards-h">1. Your credit cards</h2>
+        <div class="btn-row">
+          <button type="button" class="btn ghost" id="load-example">Load example</button>
+          <button type="button" class="btn ghost" id="clear-all">Clear all</button>
+        </div>
+      </div>
+      <p class="hint" id="example-note">Showing example cards. Replace them with your own; everything stays in this browser.</p>
+
+      <div class="card-list" id="card-list"></div>
+      <button type="button" class="btn" id="add-card">+ Add a card</button>
+
+      <datalist id="banks">
+        <option value="American Express"></option>
+        <option value="Bank of America"></option>
+        <option value="Barclays"></option>
+        <option value="Capital One"></option>
+        <option value="Chase"></option>
+        <option value="Citi"></option>
+        <option value="Discover"></option>
+        <option value="Goldman Sachs (Apple Card)"></option>
+        <option value="HSBC"></option>
+        <option value="Navy Federal"></option>
+        <option value="PNC"></option>
+        <option value="Synchrony"></option>
+        <option value="TD Bank"></option>
+        <option value="U.S. Bank"></option>
+        <option value="USAA"></option>
+        <option value="Wells Fargo"></option>
+      </datalist>
+
+      <div class="settings">
+        <fieldset class="seg" aria-describedby="strategy-help">
+          <legend>Which card gets extra money first?</legend>
+          <label><input type="radio" name="strategy" value="avalanche" checked /> <span>Avalanche: highest APR first</span></label>
+          <label><input type="radio" name="strategy" value="snowball" /> <span>Snowball: smallest balance first</span></label>
+        </fieldset>
+        <p class="hint" id="strategy-help">Avalanche saves the most money. Snowball gives you quicker wins, which some people find easier to stick with.</p>
+
+        <label class="field custom-budget">
+          <span>Your own monthly budget (optional, for the Custom plan)</span>
+          <div class="money-input"><span>$</span><input type="number" id="custom-budget" min="0" step="10" inputmode="decimal" placeholder="e.g. 500" /></div>
+        </label>
+      </div>
+    </section>
+
+    <div id="error" class="error" role="alert" hidden></div>
+
+    <div id="results" hidden>
+      <!-- 2. Snapshot -->
+      <section class="panel" aria-labelledby="snap-h">
+        <h2 id="snap-h">2. Where you stand today</h2>
+        <div class="stats" id="stats"></div>
+        <div class="callout warn" id="min-callout"></div>
+      </section>
+
+      <!-- 3. Plans -->
+      <section class="panel" aria-labelledby="plans-h">
+        <h2 id="plans-h">3. Choose a payoff plan</h2>
+        <p class="hint">Each plan is one fixed monthly amount spread across your cards. Pay every card's minimum, then put the rest toward the priority card. When a card is paid off, its payment rolls into the next one.</p>
+        <div class="plans" id="plans" role="radiogroup" aria-label="Payoff plans"></div>
+      </section>
+
+      <!-- 4. Charts -->
+      <section class="panel" aria-labelledby="charts-h">
+        <h2 id="charts-h">4. See the plan</h2>
+        <div class="chart-grid">
+          <figure class="chart-card wide">
+            <figcaption>
+              <strong>Total balance over time, all plans</strong>
+              <span>Compare how fast each plan brings the balance to $0.</span>
+            </figcaption>
+            <div class="chart-box tall"><canvas id="chart-compare"></canvas></div>
+          </figure>
+          <figure class="chart-card wide">
+            <figcaption>
+              <strong>Balance by card: <span class="sel-plan-name"></span></strong>
+              <span>Watch each card drop to zero in payoff order.</span>
+            </figcaption>
+            <div class="chart-box tall"><canvas id="chart-cards"></canvas></div>
+          </figure>
+          <figure class="chart-card">
+            <figcaption>
+              <strong>Where your money goes: <span class="sel-plan-name"></span></strong>
+              <span>Principal vs. interest over the whole plan.</span>
+            </figcaption>
+            <div class="chart-box"><canvas id="chart-split"></canvas></div>
+          </figure>
+          <figure class="chart-card">
+            <figcaption>
+              <strong>Total interest by plan</strong>
+              <span>Paying more each month saves this much.</span>
+            </figcaption>
+            <div class="chart-box"><canvas id="chart-interest"></canvas></div>
+          </figure>
+          <figure class="chart-card wide">
+            <figcaption>
+              <strong>Each monthly payment, split into interest and principal: <span class="sel-plan-name"></span></strong>
+              <span>Early on, more of each payment goes to interest. That share shrinks as the balance falls.</span>
+            </figcaption>
+            <div class="chart-box tall"><canvas id="chart-monthly"></canvas></div>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 5. Payoff timeline -->
+      <section class="panel" aria-labelledby="tl-h">
+        <h2 id="tl-h">5. Payoff order: <span class="sel-plan-name"></span></h2>
+        <ol class="timeline" id="timeline"></ol>
+      </section>
+
+      <!-- 6. Tips -->
+      <section class="panel" aria-labelledby="tips-h">
+        <h2 id="tips-h">6. Ways to get out faster</h2>
+        <ul class="tips" id="tips"></ul>
+      </section>
+
+      <!-- 7. Schedule -->
+      <section class="panel" aria-labelledby="sched-h">
+        <div class="panel-head">
+          <h2 id="sched-h">7. Month-by-month schedule: <span class="sel-plan-name"></span></h2>
+          <div class="btn-row">
+            <button type="button" class="btn ghost" id="print-plan">Print</button>
+            <button type="button" class="btn" id="download-csv">Download CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="schedule" id="schedule"></table></div>
+      </section>
+    </div>
+
+    <footer class="foot">
+      <p>Estimates only. The planner assumes your APR stays the same, you make no new purchases, and each card's minimum is the greater of $25 (or the minimum you enter) and 1% of the balance plus that month's interest. Your card agreement may calculate it differently.</p>
+    </footer>
+  </main>
+
+  <script src="vendor/chart.umd.js"></script>
+  <script src="js/planner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
