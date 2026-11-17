@@ -4,212 +4,179 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Debt Payoff Planner</title>
-  <meta name="description" content="Plan how to pay off your credit card debt with easy, medium, and aggressive payoff plans, charts, and a month-by-month schedule." />
+  <meta name="description" content="A simple plan to pay off your credit card debt." />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="wrap">
-      <h1>Debt Payoff Planner</h1>
-      <p class="lede">Enter your credit cards, pick a plan, and see exactly when you'll be debt-free and how much interest you'll pay along the way.</p>
-    </div>
-  </header>
-
   <main class="wrap">
-    <!-- 1. Inputs -->
+    <header class="site-header">
+      <h1>Debt Payoff Planner</h1>
+      <p class="lede">Add your cards and your monthly money. We'll show you a plan.</p>
+    </header>
+
+    <!-- Step 1 -->
     <section class="panel" aria-labelledby="cards-h">
       <div class="panel-head">
-        <h2 id="cards-h">1. Your credit cards</h2>
+        <h2 id="cards-h"><span class="step">1</span>Your cards</h2>
         <div class="btn-row">
-          <button type="button" class="btn ghost" id="load-example">Load example</button>
-          <button type="button" class="btn ghost" id="clear-all">Clear all</button>
+          <button type="button" class="link" id="load-example">Example</button>
+          <button type="button" class="link" id="clear-all">Clear</button>
         </div>
       </div>
-      <p class="hint" id="example-note">Showing example cards. Replace them with your own; everything stays in this browser.</p>
-
+      <p class="hint" id="example-note">These are example numbers. Replace them with yours.</p>
+      <div class="col-labels card-cols" aria-hidden="true"><span>Bank</span><span>Balance</span><span>APR</span><span></span></div>
       <div class="card-list" id="card-list"></div>
-      <button type="button" class="btn" id="add-card">+ Add a card</button>
-
-      <datalist id="banks">
-        <option value="American Express"></option>
-        <option value="Bank of America"></option>
-        <option value="Barclays"></option>
-        <option value="Capital One"></option>
-        <option value="Chase"></option>
-        <option value="Citi"></option>
-        <option value="Discover"></option>
-        <option value="Goldman Sachs (Apple Card)"></option>
-        <option value="HSBC"></option>
-        <option value="Navy Federal"></option>
-        <option value="PNC"></option>
-        <option value="Synchrony"></option>
-        <option value="TD Bank"></option>
-        <option value="U.S. Bank"></option>
-        <option value="USAA"></option>
-        <option value="Wells Fargo"></option>
-      </datalist>
-
-      <div class="settings">
-        <fieldset class="seg" aria-describedby="strategy-help">
-          <legend>Which card gets extra money first?</legend>
-          <label><input type="radio" name="strategy" value="avalanche" checked /> <span>Avalanche: highest APR first</span></label>
-          <label><input type="radio" name="strategy" value="snowball" /> <span>Snowball: smallest balance first</span></label>
-        </fieldset>
-        <p class="hint" id="strategy-help">Avalanche saves the most money. Snowball gives you quicker wins, which some people find easier to stick with.</p>
-
-        <label class="field custom-budget">
-          <span>Your own monthly budget (optional, for the Custom plan)</span>
-          <div class="money-input"><span>$</span><input type="number" id="custom-budget" min="0" step="10" inputmode="decimal" placeholder="e.g. 500" /></div>
-        </label>
-      </div>
+      <button type="button" class="link add" id="add-card">+ Add card</button>
     </section>
 
-    <!-- 2. Budget -->
+    <!-- Step 2 -->
     <section class="panel" aria-labelledby="budget-h">
-      <h2 id="budget-h">2. Your monthly budget</h2>
-      <p class="hint">Add your take-home pay and the bills you can't skip. The planner uses them to check which plans you can actually afford. Leave this blank to skip.</p>
+      <h2 id="budget-h"><span class="step">2</span>Your monthly money <span class="opt">optional</span></h2>
 
-      <div class="income-row">
-        <label class="field">
-          <span>Take-home pay (after taxes)</span>
-          <div class="money-input"><span>$</span><input type="number" id="salary" min="0" step="10" inputmode="decimal" placeholder="e.g. 3800" /></div>
-        </label>
-        <label class="field">
-          <span>How often</span>
-          <select id="salary-freq">
-            <option value="monthly">Per month</option>
-            <option value="semimonthly">Twice a month</option>
-            <option value="biweekly">Every 2 weeks</option>
-            <option value="weekly">Every week</option>
-            <option value="yearly">Per year</option>
+      <label class="field pay-field">
+        <span>Take-home pay</span>
+        <div class="pay-row">
+          <div class="money-input"><span>$</span><input type="number" id="salary" min="0" step="10" inputmode="decimal" placeholder="0" /></div>
+          <select id="salary-freq" aria-label="How often you're paid">
+            <option value="monthly">per month</option>
+            <option value="semimonthly">twice a month</option>
+            <option value="biweekly">every 2 weeks</option>
+            <option value="weekly">per week</option>
+            <option value="yearly">per year</option>
           </select>
-        </label>
-        <label class="field">
-          <span>Cushion for everything else</span>
-          <div class="pct-input"><input type="number" id="cushion" min="0" max="50" step="1" inputmode="decimal" placeholder="10" /><span>% of pay</span></div>
-        </label>
-      </div>
-      <p class="hint" id="salary-monthly"></p>
+        </div>
+      </label>
 
-      <h3 class="sub-h">Essential monthly costs</h3>
+      <p class="field-label">Bills you can't skip</p>
       <div class="expense-list" id="expense-list"></div>
-      <div class="chips" id="expense-chips" aria-label="Quick add common expenses"></div>
-      <button type="button" class="btn ghost" id="add-expense">+ Add another cost</button>
+      <button type="button" class="link add" id="add-expense">+ Add bill</button>
+      <datalist id="expense-names">
+        <option value="Rent / mortgage"></option><option value="Electricity"></option><option value="Water & gas"></option>
+        <option value="Car payment"></option><option value="Car insurance"></option><option value="Health insurance"></option>
+        <option value="Groceries"></option><option value="Phone & internet"></option><option value="Fuel / transit"></option>
+        <option value="Childcare"></option><option value="Student loan"></option><option value="Medical"></option>
+      </datalist>
+      <p class="summary-line" id="salary-monthly"></p>
+
+      <details class="more">
+        <summary>Advanced options</summary>
+        <div class="adv">
+          <fieldset class="seg">
+            <legend>Which card to pay off first</legend>
+            <label><input type="radio" name="strategy" value="avalanche" checked /> <span>Highest APR (saves most)</span></label>
+            <label><input type="radio" name="strategy" value="snowball" /> <span>Smallest balance (quick wins)</span></label>
+          </fieldset>
+          <label class="field"><span>Safety cushion (kept aside from pay)</span>
+            <div class="pct-input short"><input type="number" id="cushion" min="0" max="50" step="1" inputmode="decimal" placeholder="10" /><span>%</span></div></label>
+          <label class="field"><span>Your own monthly payment</span>
+            <div class="money-input short"><span>$</span><input type="number" id="custom-budget" min="0" step="10" inputmode="decimal" placeholder="optional" /></div></label>
+        </div>
+      </details>
     </section>
 
     <div id="error" class="error" role="alert" hidden></div>
 
     <div id="results" hidden>
-      <!-- 2. Snapshot -->
-      <section class="panel" aria-labelledby="snap-h">
-        <h2 id="snap-h">3. Where you stand today</h2>
-        <div class="stats" id="stats"></div>
-        <div class="callout warn" id="min-callout"></div>
+      <!-- The answer -->
+      <section class="panel hero" aria-labelledby="hero-h">
+        <p class="eyebrow">Your plan</p>
+        <h2 id="hero-h" class="hero-title"></h2>
+        <p class="hero-sub" id="hero-sub"></p>
+
+        <div class="tabs" id="plans" role="radiogroup" aria-label="Payoff plans"></div>
+        <div class="facts" id="plan-facts"></div>
+
         <div id="paycheck" hidden>
-          <h3 class="sub-h">Where your paycheck goes: <span class="sel-plan-name"></span></h3>
           <div class="paybar" id="paybar" role="img"></div>
           <ul class="paybar-legend" id="paybar-legend"></ul>
         </div>
       </section>
 
-      <!-- 3. Plans -->
-      <section class="panel" aria-labelledby="plans-h">
-        <h2 id="plans-h">4. Choose a payoff plan</h2>
-        <p class="hint">Each plan is one fixed monthly amount spread across your cards. Pay every card's minimum, then put the rest toward the priority card. When a card is paid off, its payment rolls into the next one.</p>
-        <div class="callout good" id="afford-callout" hidden></div>
-        <div class="plans" id="plans" role="radiogroup" aria-label="Payoff plans"></div>
+      <!-- Main chart -->
+      <section class="panel" aria-labelledby="chart-h">
+        <h2 id="chart-h">Your balance over time</h2>
+        <div class="chart-box tall"><canvas id="chart-compare"></canvas></div>
+        <p class="hint" id="today-line"></p>
       </section>
 
-      <!-- 4. Charts -->
-      <section class="panel" aria-labelledby="charts-h">
-        <h2 id="charts-h">5. See the plan</h2>
-        <div class="chart-grid">
-          <figure class="chart-card wide">
-            <figcaption>
-              <strong>Total balance over time, all plans</strong>
-              <span>Compare how fast each plan brings the balance to $0.</span>
-            </figcaption>
-            <div class="chart-box tall"><canvas id="chart-compare"></canvas></div>
-          </figure>
-          <figure class="chart-card wide">
-            <figcaption>
-              <strong>Balance by card: <span class="sel-plan-name"></span></strong>
-              <span>Watch each card drop to zero in payoff order.</span>
-            </figcaption>
-            <div class="chart-box tall"><canvas id="chart-cards"></canvas></div>
-          </figure>
-          <figure class="chart-card">
-            <figcaption>
-              <strong>Where your money goes: <span class="sel-plan-name"></span></strong>
-              <span>Principal vs. interest over the whole plan.</span>
-            </figcaption>
-            <div class="chart-box"><canvas id="chart-split"></canvas></div>
-          </figure>
-          <figure class="chart-card">
-            <figcaption>
-              <strong>Total interest by plan</strong>
-              <span>Paying more each month saves this much.</span>
-            </figcaption>
-            <div class="chart-box"><canvas id="chart-interest"></canvas></div>
-          </figure>
-          <figure class="chart-card wide">
-            <figcaption>
-              <strong>Each monthly payment, split into interest and principal: <span class="sel-plan-name"></span></strong>
-              <span>Early on, more of each payment goes to interest. That share shrinks as the balance falls.</span>
-            </figcaption>
-            <div class="chart-box tall"><canvas id="chart-monthly"></canvas></div>
-          </figure>
-        </div>
-      </section>
-
-      <!-- 5. Payoff timeline -->
-      <section class="panel" aria-labelledby="tl-h">
-        <h2 id="tl-h">6. Payoff order: <span class="sel-plan-name"></span></h2>
-        <ol class="timeline" id="timeline"></ol>
-      </section>
-
-      <!-- 7. Personal loan -->
-      <section class="panel" aria-labelledby="loan-h">
-        <h2 id="loan-h">7. Should you consider a personal loan?</h2>
-        <p class="hint">A debt consolidation loan pays off all your cards at once. You then make one fixed payment, usually at a lower rate than your cards. Enter a rate you've been offered, or keep the typical values.</p>
-        <div class="income-row">
-          <label class="field"><span>Loan APR</span>
-            <div class="pct-input"><input type="number" id="loan-apr" min="0" max="40" step="0.1" inputmode="decimal" /><span>%</span></div></label>
-          <label class="field"><span>Loan term</span>
-            <select id="loan-term">
-              <option value="24">2 years</option>
-              <option value="36">3 years</option>
-              <option value="48">4 years</option>
-              <option value="60">5 years</option>
-            </select></label>
-          <label class="field"><span>Origination fee</span>
-            <div class="pct-input"><input type="number" id="loan-fee" min="0" max="12" step="0.5" inputmode="decimal" /><span>%</span></div></label>
-        </div>
-        <div class="verdict" id="loan-verdict"></div>
-        <div class="table-wrap compact"><table class="schedule" id="loan-table"></table></div>
-      </section>
-
-      <!-- 8. Tips -->
+      <!-- Next steps -->
       <section class="panel" aria-labelledby="tips-h">
-        <h2 id="tips-h">8. Ways to get out faster</h2>
+        <h2 id="tips-h">What to do next</h2>
         <ul class="tips" id="tips"></ul>
+        <details class="more" id="more-tips-box">
+          <summary>More tips</summary>
+          <ul class="tips" id="tips-more"></ul>
+        </details>
       </section>
 
-      <!-- 7. Schedule -->
-      <section class="panel" aria-labelledby="sched-h">
-        <div class="panel-head">
-          <h2 id="sched-h">9. Month-by-month schedule: <span class="sel-plan-name"></span></h2>
-          <div class="btn-row">
-            <button type="button" class="btn ghost" id="print-plan">Print</button>
-            <button type="button" class="btn" id="download-csv">Download CSV</button>
+      <!-- Loan -->
+      <section class="panel" aria-labelledby="loan-h">
+        <h2 id="loan-h">Should you get a personal loan?</h2>
+        <div class="verdict" id="loan-verdict"></div>
+        <details class="more">
+          <summary>Compare and change loan details</summary>
+          <div class="loan-inputs">
+            <label class="field"><span>Loan APR</span>
+              <div class="pct-input"><input type="number" id="loan-apr" min="0" max="40" step="0.1" inputmode="decimal" /><span>%</span></div></label>
+            <label class="field"><span>Length</span>
+              <select id="loan-term">
+                <option value="24">2 years</option><option value="36">3 years</option>
+                <option value="48">4 years</option><option value="60">5 years</option>
+              </select></label>
+            <label class="field"><span>Upfront fee</span>
+              <div class="pct-input"><input type="number" id="loan-fee" min="0" max="12" step="0.5" inputmode="decimal" /><span>%</span></div></label>
           </div>
-        </div>
-        <div class="table-wrap"><table class="schedule" id="schedule"></table></div>
+          <div class="table-wrap compact"><table class="schedule" id="loan-table"></table></div>
+          <p class="hint" id="loan-detail"></p>
+        </details>
+      </section>
+
+      <!-- Details -->
+      <section class="panel details-panel" aria-label="More details">
+        <details class="more" id="more-charts">
+          <summary>More charts</summary>
+          <div class="chart-grid">
+            <figure class="chart-card wide">
+              <figcaption>Balance on each card</figcaption>
+              <div class="chart-box tall"><canvas id="chart-cards"></canvas></div>
+            </figure>
+            <figure class="chart-card">
+              <figcaption>What you'll pay in total</figcaption>
+              <div class="chart-box"><canvas id="chart-split"></canvas></div>
+            </figure>
+            <figure class="chart-card">
+              <figcaption>Interest for each plan</figcaption>
+              <div class="chart-box"><canvas id="chart-interest"></canvas></div>
+            </figure>
+            <figure class="chart-card wide">
+              <figcaption>Each payment: interest vs. paying down debt</figcaption>
+              <div class="chart-box"><canvas id="chart-monthly"></canvas></div>
+            </figure>
+          </div>
+        </details>
+
+        <details class="more">
+          <summary>When each card gets paid off</summary>
+          <ol class="timeline" id="timeline"></ol>
+        </details>
+
+        <details class="more">
+          <summary>Month-by-month schedule</summary>
+          <div class="btn-row sched-actions">
+            <button type="button" class="btn ghost" id="print-plan">Print</button>
+            <button type="button" class="btn ghost" id="download-csv">Download CSV</button>
+          </div>
+          <div class="table-wrap"><table class="schedule" id="schedule"></table></div>
+        </details>
       </section>
     </div>
 
     <footer class="foot">
-      <p>Estimates only. The planner assumes your APR stays the same, you make no new purchases, and each card's minimum is the greater of $25 (or the minimum you enter) and 1% of the balance plus that month's interest. Your card agreement may calculate it differently. Likelihood ratings compare each payment with the money left after your essentials and cushion: "Very likely" uses up to 60% of what's left after your cushion, "Likely" fits within it, "A stretch" dips into the cushion, and "Not affordable" needs more than you have left. Loan estimates use a standard fixed-rate payment, with the origination fee taken out of the loan amount. This is not financial advice.</p>
+      <details>
+        <summary>How this works</summary>
+        <p>Estimates only, not financial advice. The planner assumes your APRs stay the same and you stop using the cards. Each card's minimum is the larger of $25 and 1% of the balance plus that month's interest. Each plan is one fixed monthly payment: every card gets its minimum, the rest goes to the priority card, and when a card is paid off its payment moves to the next one.</p>
+        <p>Plan ratings compare the payment with the money left after your bills and safety cushion. "Very likely" uses up to 60% of it, "Likely" fits within it, "Tight" dips into your cushion, and "Too much" needs more than you have left. Loan estimates use a standard fixed payment, with the upfront fee taken out of the loan amount. Your data stays in this browser.</p>
+      </details>
     </footer>
   </main>
 

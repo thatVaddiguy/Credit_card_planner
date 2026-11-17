@@ -1,25 +1,22 @@
 # Debt Payoff Planner
 
-A static web app for planning how to pay off credit card debt. Nothing to install and no server; all data stays in your browser.
+A simple web app that turns your credit card debt into a clear payoff plan. Nothing to install and no server; your data stays in your browser.
 
-## Features
+## How it works
 
-- **Card inputs**: bank (with suggestions for common banks), nickname, balance, APR, optional minimum payment. Add as many cards as you like.
-- **Payoff plans**
-  - **Easy**: the lowest fixed payment that clears the debt in about 5 years
-  - **Medium**: about 3 years
-  - **Aggressive**: about 18 months
-  - **Custom**: your own monthly budget
-  - Each plan shows the monthly payment, debt-free date, total interest, total paid, and the savings compared with paying only the minimums.
-- **Monthly budget**: take-home pay (monthly, twice a month, every 2 weeks, weekly, or yearly), essential costs like rent, electricity, and car payments (with one-click buttons for common ones), and a safety cushion (10% of pay by default). The app shows your free cash and how much you can comfortably put toward debt, and a bar shows where your paycheck goes.
-- **Likelihood ratings**: every plan is rated *Very likely*, *Likely*, *A stretch*, or *Not affordable* based on your budget. The fastest plan that fits comfortably is marked as the best fit.
-- **Personal loan check**: compares a consolidation loan (editable APR, term, and fee) with paying the cards directly at the same monthly amount. It then recommends whether to consider a loan. If no plan or loan fits, it points you to a longer loan term, hardship programs, or nonprofit credit counseling.
-- **Strategy**: Avalanche (highest APR first, cheapest) or Snowball (smallest balance first, quickest wins). Money freed up by a paid-off card rolls into the next card.
-- **Charts** (Chart.js): total balance over time for every plan, balance by card, principal vs. interest, total interest by plan, and each month's payment split into interest and principal.
-- **Payoff order timeline**: when each card hits $0.
-- **Personalized tips**: which card to target first, avalanche vs. snowball difference, the effect of adding $50 a month, savings from asking for a lower APR, a balance transfer estimate, and other habits.
-- **Month-by-month schedule** with CSV download and a print view.
-- Light and dark themes, works on phones, and saves your inputs in `localStorage`.
+1. **Your cards**: bank, balance, and APR for each card.
+2. **Your monthly money** (optional): take-home pay and the bills you can't skip, like rent, electricity, or a car payment.
+
+You then get:
+
+- **One clear answer**: "Debt-free by *May 2028*, paying $615/month", with a rating of how realistic that is for your budget (*Very likely*, *Likely*, *Tight*, or *Too much*).
+- **Plan tabs**: Easy (about 5 years), Medium (about 3 years), or Fast (about 18 months). The plan that fits your budget best is picked for you.
+- **A chart** of your balance over time for each plan compared with paying only the minimums.
+- **What to do next**: the three most useful tips for your situation, with more in a collapsible section.
+- **Personal loan check**: a plain yes, no, or maybe on whether a consolidation loan makes sense, with adjustable loan details.
+- **Collapsible extras**: more charts, when each card gets paid off, and a month-by-month schedule with CSV download and print.
+
+**Advanced options** (collapsed by default): which card to pay first (highest APR or smallest balance), the size of your safety cushion, and your own monthly payment amount.
 
 ## Run it
 
@@ -29,14 +26,14 @@ Open `index.html` in a browser, or serve the folder:
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
-## How the math works
+## The math
 
-Each month every card accrues `balance × APR / 12` in interest. Every card gets its minimum payment: the greater of $25 (or the minimum you entered) and 1% of the balance plus that month's interest. The rest of the plan's fixed budget goes to the priority card. The Easy, Medium, and Aggressive budgets come from a binary search for the smallest payment, rounded up to $5, that clears all cards within the target number of months. Figures are estimates: the planner assumes APRs don't change and no new charges are made.
+Each month every card accrues `balance × APR / 12` in interest and gets its minimum payment: the larger of $25 and 1% of the balance plus that month's interest. The rest of the plan's fixed payment goes to the priority card. When a card is paid off, its payment moves to the next card. The preset plan payments come from a binary search for the smallest payment, rounded up to $5, that clears everything within the target time. Budget ratings compare the payment with the money left after your bills and a safety cushion (10% of pay by default). These are estimates, not financial advice.
 
 ## Files
 
 - `index.html`: page structure
 - `css/styles.css`: styles, including the dark theme
-- `js/planner.js`: payoff engine (pure functions; also loads in Node for testing)
+- `js/planner.js`: payoff and loan math (pure functions; also loads in Node)
 - `js/app.js`: UI, charts, tips, schedule
 - `vendor/chart.umd.js`: Chart.js 4.4.1 (MIT), bundled so the app works offline
